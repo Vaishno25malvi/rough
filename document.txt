@@ -1,0 +1,69 @@
+Project Title
+
+Problem Statement:
+Analysis of the Problem Statement: 
+The Harness Plugin, a CD orchestrator plugin, is crafted to boost developer productivity by minimizing context switching and optimizing workflow processes. This plugin integrates effortlessly with popular development environments like VS Code and IntelliJ IDEA. It offers a comprehensive suite of tools and features designed to streamline tasks and reduce the time developers spend transitioning between various applications and activities.
+Tech-Stack:
+For VS Code Plugin:
+JavaScript, HTML, CSS
+Modules: Axios, JS-YAML, Yaml, Ansi_to_Html
+For IntelliJ IDEA Plugin:
+Java, Gradle
+Assumptions:
+Users need access to Harness and some of its projects.
+Users need to create an API key using Harness Developer Hub and save that along with their user ID and Harness URL (as needed) in a .harness file for user authentication.
+User has initialized an work folder for harness.
+Proposed Solution:
+Develop a TreeView on the left side, similar to GitHub actions.
+Ensure the extension is configurable for all types of users on Harness.
+Develop a WebView to show a hierarchy tree of all the steps in a pipeline and execution logs related to them.
+Demonstration:
+Key Features:
+Show details of all the projects Harness users have access to, along with its services and pipelines.
+List all the environments under the project.
+List all the input sets and the 10 most recent executions of any pipeline along with execution status.
+Fetch YAML files for environments, services, input sets, pipelines.
+Display all the log details of a pipeline execution in the panel.
+Provide a website-like experience in IDE and reduce context switching.
+Streamline workflow processes and minimize interruptions.
+Offer a user-friendly interface for developers.
+Future Work:
+Fetch all the execution logs if given access to the POST APIs.
+Enable triggering of any pipeline from the IDE itself, and real-time collaboration features.
+Expand further to other APIs used in the organization.
+Convert YAML of environments, services, input sets to visuals for user accessibility.
+Allow modification of pipelines, input sets and other configurations from the IDE.
+
+Journey and Challenges:
+     Journey:
+Studied the basics of plugin development.
+Reviewed existing plugins for ideas.
+Developed an initial model and iterated on it.
+Reviewed and fixed some bugs.
+    Challenges:
+Access-related challenges for GitHub and Harness.
+Tech stack-related challenges.
+Performance optimization issues.
+Impact:
+Reduces context switching.
+Increases developer productivity and efficiency.
+Learnings:
+Acquired knowledge of new tech stacks.
+Gained understanding of CI/CD basics.
+Enhanced teamwork and collaboration skills.
+
+Installation Guide and User Manual
+For Authentication of User:
+User needs the following to use the plugin:
+Creation of API Key:
+Follow the link below to create personal API keys and tokens: 
+Manage API keys | Harness Developer Hub 
+Extraction of User Account ID:
+Refer to the relevant screenshots for guidance.
+Relevant Harness URL:
+Save all this information in the .harness file located at C:/user/<K_ID>/.harness as shown in the screenshots.
+Once the plugin has the required authentication, users can proceed to use the plugin.
+UI Layout:
+All projects the user is working on or has access to are displayed in the left side TreeView.
+If a particular project is selected, all the services, pipelines, and environments of the project are shown.
+If th
