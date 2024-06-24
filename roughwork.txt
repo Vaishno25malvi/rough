@@ -235,3 +235,29 @@ public class Hplugin extends AnAction {
         JsonDataController.showJsonData(project, toolWindow);
     }
 }
+
+
+<idea-plugin>
+    <id>com.hplugin</id>
+    <name>Hplugin</name>
+    <version>1.0.0</version>
+    <vendor email="your-email@example.com" url="https://your-url.com">Your Name</vendor>
+
+    <description><![CDATA[
+        A simple plugin to display JSON data with a navigation bar.
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="JsonData" anchor="right" factoryClass="com.hplugin.JsonDataController" />
+    </extensions>
+
+    <actions>
+        <action id="com.hplugin.ShowJsonData" class="com.hplugin.Hplugin" text="Show JSON Data" description="Displays JSON data in a tool window">
+            <add-to-group group-id="ToolsMenu" anchor="last" />
+        </action>
+    </actions>
+</idea-plugin>
+
+
