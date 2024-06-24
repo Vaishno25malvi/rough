@@ -1,1 +1,237 @@
-hello
+package com.hplugin;
+
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowFactory;
+import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.ui.content.Content;
+import com.intellij.ui.content.ContentFactory;
+import org.jetbrains.annotations.NotNull;
+
+import javax.swing.*;
+import java.util.HashMap;
+import java.util.Map;
+
+public class JsonDataController implements ToolWindowFactory {
+
+    @Override
+    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+        JPanel panel = new JPanel();
+        JLabel label = new JLabel("JSON Data Viewer");
+        panel.add(label);
+
+        // Sample JSON data and URL map
+        Object jsonData = getSampleJsonData();
+        Map<String, String> urlMap = getSampleUrlMap();
+
+        // Generate HTML content
+        String htmlContent = createWebviewContent(jsonData, urlMap);
+
+        // Set HTML content to tool window
+        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+        Content content = contentFactory.createContent(htmlContent, "", false);
+        toolWindow.getContentManager().addContent(content);
+    }
+
+    private static Object getSampleJsonData() {
+        // Sample JSON data - replace with your actual data retrieval logic
+        return new Object[] {
+                new JsonData("Category 1", new JsonData[] {
+                        new JsonData("Item 1.1"),
+                        new JsonData("Item 1.2")
+                }),
+                new JsonData("Category 2", new JsonData[] {
+                        new JsonData("Item 2.1"),
+                        new JsonData("Item 2.2")
+                })
+        };
+    }
+
+    private static Map<String, String> getSampleUrlMap() {
+        // Sample URL map - replace with your actual URL mappings
+        Map<String, String> urlMap = new HashMap<>();
+        urlMap.put("Item 1.1", "https://jsonplaceholder.typicode.com/posts");
+        urlMap.put("Item 1.2", "https://jsonplaceholder.typicode.com/comments");
+        urlMap.put("Item 2.1", "https://jsonplaceholder.typicode.com/users");
+        urlMap.put("Item 2.2", "https://jsonplaceholder.typicode.com/todos");
+        return urlMap;
+    }
+
+    private static String createWebviewContent(Object jsonData, Map<String, String> urlMap) {
+        StringBuilder navListHtml = new StringBuilder();
+        StringBuilder contentHtml = new StringBuilder("<p>Select a link to see details</p>");
+
+        if (jsonData instanceof Object[]) {
+            Object[] categories = (Object[]) jsonData;
+            for (Object category : categories) {
+                if (category instanceof JsonData) {
+                    JsonData categoryData = (JsonData) category;
+                    navListHtml.append("<li><span class=\"collapsible\">")
+                            .append(categoryData.getName())
+                            .append("</span><ul class=\"nested\">");
+
+                    for (JsonData child : categoryData.getChildren()) {
+                        String itemName = child.getName();
+                        navListHtml.append("<li><a href=\"#\" data-name=\"")
+                                .append(itemName)
+                                .append("\">")
+                                .append(itemName)
+                                .append("</a></li>");
+                    }
+
+                    navListHtml.append("</ul></li>");
+                }
+            }
+        }
+
+        String htmlContent = String.format("""
+                <!DOCTYPE html>
+                <html lang="en">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>JSON Data Viewer</title>
+                    <style>
+                        body {
+                            display: flex;
+                            height: 100vh;
+                            margin: 0;
+                            background: black;
+                            color: white;
+                        }
+                        #navbar {
+                            width: 20%%;
+                            background: #333;
+                            padding: 10px;
+                            overflow-y: auto;
+                        }
+                        #content {
+                            width: 80%%;
+                            padding: 10px;
+                            overflow-y: auto;
+                            background: #222;
+                        }
+                        ul {
+                            list-style-type: none;
+                            padding-left: 0;
+                        }
+                        li {
+                            margin-bottom: 5px;
+                        }
+                        li a, li span {
+                            display: block;
+                            padding: 5px;
+                            margin: 2px 0;
+                            border-radius: 4px;
+                            color: white;
+                            text-decoration: none;
+                            cursor: pointer;
+                        }
+                        li a:hover {
+                            background: lightblue;
+                        }
+                        .collapsible::before {
+                            content: "▶";
+                            color: lightblue;
+                            cursor: pointer;
+                            display: inline-block;
+                            margin-right: 5px;
+                        }
+                        .collapsible.expanded::before {
+                            content: "▼";
+                        }
+                        .nested {
+                            display: none;
+                        }
+                        .nested.expanded {
+                            display: block;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div id="navbar">
+                        <ul id="navList">%s</ul>
+                    </div>
+                    <div id="content">%s</div>
+                    <script>
+                        const vscode = acquireVsCodeApi();
+            
+                        document.querySelector('#navbar').addEventListener('click', (event) => {
+                            const target = event.target;
+                            if (target.matches('a[data-name], span[data-name]')) {
+                                const name = target.getAttribute('data-name');
+                                vscode.postMessage({ command: 'elementClicked', name });
+                            }
+                        });
+            
+                        document.querySelectorAll('.collapsible').forEach(button => {
+                            button.addEventListener('click', () => {
+                                button.classList.toggle('expanded');
+                                const nested = button.nextElementSibling;
+                                if (nested) {
+                                    nested.classList.toggle('expanded');
+                                }
+                            });
+                        });
+            
+                        window.addEventListener('message', event => {
+                            const data = event.data;
+                            if (data.command === 'displayNoLogs') {
+                                document.getElementById('content').innerHTML = '<p>No logs available</p>';
+                            } else if (data.command === 'displayData') {
+                                document.getElementById('content').innerHTML = data.tableHtml;
+                            } else if (data.command === 'displayError') {
+                                document.getElementById('content').innerHTML = '<p>Error fetching data</p>';
+                            }
+                        });
+                    </script>
+                </body>
+                </html>
+                """, navListHtml.toString(), contentHtml);
+
+        return htmlContent;
+    }
+
+    private static class JsonData {
+        private String name;
+        private JsonData[] children;
+
+        public JsonData(String name, JsonData[] children) {
+            this.name = name;
+            this.children = children;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public JsonData[] getChildren() {
+            return children;
+        }
+    }
+}
+
+
+
+
+
+
+
+package com.hplugin;
+
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowManager;
+import org.jetbrains.annotations.NotNull;
+
+public class Hplugin extends AnAction {
+
+    @Override
+    public void actionPerformed(@NotNull AnActionEvent e) {
+        Project project = e.getProject();
+        ToolWindow toolWindow = ToolWindowManager.getInstance(project).getToolWindow("JsonData");
+        JsonDataController.showJsonData(project, toolWindow);
+    }
+}
