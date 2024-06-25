@@ -7,126 +7,151 @@ import com.intellij.ui.jcef.JBCefBrowser;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONArray;
+import org.json.JSONObject;
 
 import javax.swing.*;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.HashMap;
+import java.util.Map;
 
 public class HelloWorldToolWindowFactory implements ToolWindowFactory {
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        // Create a simple panel with a WebView
-        JPanel panel = new JPanel(new BorderLayout());
-        JButton button = new JButton("Click me");
-        JLabel label = new JLabel("<html><div style='font-size:24px;color:blue;'>Hello, <b style='color:red;'>World</b>!</div></html>", SwingConstants.CENTER);
+        // Create a split pane with a tree on the left and a content area on the right
+        JSplitPane splitPane = new JSplitPane();
 
-        button.addActionListener(e -> label.setText("<html><div style='font-size:24px;color:blue;'>Hello, <b style='color:red;'>World</b>!</div></html>"));
+        // Create the tree
+        DefaultMutableTreeNode root = createTreeNodes();
+        JTree tree = new JTree(root);
+        tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 
-        panel.add(button, BorderLayout.NORTH);
-        panel.add(label, BorderLayout.CENTER);
+        // Create the WebView for the content area
+        JBCefBrowser browser = new JBCefBrowser();
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.add(browser.getComponent(), BorderLayout.CENTER);
 
-        // Add the panel to the tool window
+        // Map to hold node-to-URL relationships
+        Map<String, String> nodeUrlMap = createNodeUrlMap();
+
+        // Add a listener to update the content area when a node is selected
+        tree.addTreeSelectionListener(new TreeSelectionListener() {
+            @Override
+            public void valueChanged(TreeSelectionEvent e) {
+                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+                if (selectedNode != null) {
+                    String nodeName = selectedNode.getUserObject().toString();
+                    String url = nodeUrlMap.get(nodeName);
+                    if (url != null) {
+                        fetchAndDisplayData(url, browser);
+                    } else {
+                        browser.loadHTML("<html><body><p>No data available for " + nodeName + "</p></body></html>");
+                    }
+                }
+            }
+        });
+
+        // Set up the split pane
+        splitPane.setLeftComponent(new JScrollPane(tree));
+        splitPane.setRightComponent(contentPanel);
+        splitPane.setDividerLocation(200);
+
+        // Add the split pane to the tool window
         ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
-        Content content = contentFactory.createContent(panel, "", false);
+        Content content = contentFactory.createContent(splitPane, "", false);
         toolWindow.getContentManager().addContent(content);
     }
-}
 
+    private DefaultMutableTreeNode createTreeNodes() {
+        // Create the root node and add child nodes
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("Root");
+        DefaultMutableTreeNode node1 = new DefaultMutableTreeNode("Node 1");
+        DefaultMutableTreeNode node2 = new DefaultMutableTreeNode("Node 2");
+        DefaultMutableTreeNode node3 = new DefaultMutableTreeNode("Node 3");
 
+        root.add(node1);
+        root.add(node2);
+        root.add(node3);
 
+        DefaultMutableTreeNode node1Child1 = new DefaultMutableTreeNode("Node 1.1");
+        DefaultMutableTreeNode node1Child2 = new DefaultMutableTreeNode("Node 1.2");
 
-________
+        node1.add(node1Child1);
+        node1.add(node1Child2);
 
-<idea-plugin>
-    <id>com.example.helloworldplugin</id>
-    <name>HelloWorldPlugin</name>
-    <version>1.0.0</version>
-    <vendor email="your-email@example.com" url="https://your-url.com">Your Name</vendor>
-
-    <description><![CDATA[
-        A simple plugin that shows a "Hello, World!" message in a WebView.
-    ]]></description>
-
-    <depends>com.intellij.modules.platform</depends>
-
-    <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="HelloWorld" anchor="right" factoryClass="com.example.HelloWorldToolWindowFactory" />
-    </extensions>
-
-    <actions>
-        <action id="com.example.HelloWorldAction" class="com.example.HelloWorldAction" text="Show Hello World" description="Shows Hello World in a WebView">
-            <add-to-group group-id="ToolsMenu" anchor="last" />
-        </action>
-    </actions>
-</idea-plugin>
-
-
-
-
-
-
-package com.example;
-
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowFactory;
-import com.intellij.ui.content.Content;
-import com.intellij.ui.content.ContentFactory;
-import org.jetbrains.annotations.NotNull;
-
-import javax.swing.*;
-import java.awt.*;
-
-public class HelloWorldToolWindowFactory implements ToolWindowFactory {
-    @Override
-    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        // Create a simple panel with a button and a label
-        JPanel panel = new JPanel(new BorderLayout());
-        JButton button = new JButton("Click me");
-        JLabel label = new JLabel("Hello, World!", SwingConstants.CENTER);
-
-        button.addActionListener(e -> label.setText("Hello, World!"));
-
-        panel.add(button, BorderLayout.NORTH);
-        panel.add(label, BorderLayout.CENTER);
-
-        // Add the panel to the tool window
-        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
-        Content content = contentFactory.createContent(panel, "", false);
-        toolWindow.getContentManager().addContent(content);
+        return root;
     }
-}
 
+    private Map<String, String> createNodeUrlMap() {
+        // Create a map of node names to URLs
+        Map<String, String> map = new HashMap<>();
+        map.put("Node 1", "https://jsonplaceholder.typicode.com/posts");
+        map.put("Node 1.1", "https://jsonplaceholder.typicode.com/comments");
+        map.put("Node 1.2", "https://jsonplaceholder.typicode.com/users");
+        map.put("Node 2", "https://jsonplaceholder.typicode.com/todos");
+        map.put("Node 3", "https://jsonplaceholder.typicode.com/albums");
+        return map;
+    }
 
+    private void fetchAndDisplayData(String url, JBCefBrowser browser) {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .build();
 
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenApply(this::parseJsonToHtmlTable)
+                .thenAccept(html -> browser.loadHTML(html))
+                .exceptionally(e -> {
+                    browser.loadHTML("<html><body><p>Error fetching data: " + e.getMessage() + "</p></body></html>");
+                    return null;
+                });
+    }
 
+    private String parseJsonToHtmlTable(String json) {
+        StringBuilder html = new StringBuilder("<html><body><table border='1'>");
 
+        try {
+            JSONArray jsonArray = new JSONArray(json);
+            if (jsonArray.length() > 0) {
+                // Table headers
+                JSONObject firstObject = jsonArray.getJSONObject(0);
+                html.append("<tr>");
+                for (String key : firstObject.keySet()) {
+                    html.append("<th>").append(key).append("</th>");
+                }
+                html.append("</tr>");
 
-
-÷÷/<>#<[$>]>____________
-
-
-
-package com.example;
-
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowManager;
-import org.jetbrains.annotations.NotNull;
-
-public class HelloWorldAction extends AnAction {
-    @Override
-    public void actionPerformed(@NotNull AnActionEvent e) {
-        ToolWindow toolWindow = ToolWindowManager.getInstance(e.getProject()).getToolWindow("HelloWorld");
-        if (toolWindow != null) {
-            toolWindow.show();
+                // Table rows
+                for (int i = 0; i < jsonArray.length(); i++) {
+                    JSONObject jsonObject = jsonArray.getJSONObject(i);
+                    html.append("<tr>");
+                    for (String key : jsonObject.keySet()) {
+                        html.append("<td>").append(jsonObject.get(key).toString()).append("</td>");
+                    }
+                    html.append("</tr>");
+                }
+            }
+        } catch (Exception e) {
+            return "<html><body><p>Error parsing JSON: " + e.getMessage() + "</p></body></html>";
         }
+
+        html.append("</table></body></html>");
+        return html.toString();
     }
 }
 
-
-
-_________
 
 
 
@@ -144,6 +169,7 @@ repositories {
 
 dependencies {
     implementation "org.jetbrains:annotations:20.1.0"
+    implementation 'org.json:json:20210307'
 }
 
 intellij {
@@ -151,23 +177,11 @@ intellij {
     plugins = ['com.intellij.java']
 }
 
-sourceCompatibility = '1.8'
-targetCompatibility = '1.8'
+sourceCompatibility = '11'
+targetCompatibility = '11'
 
 patchPluginXml {
     changeNotes """
-      Initial version of HelloWorldPlugin.
-    """
+      Initial version.
+      """
 }
-
-runIde {
-    jvmArgs = ['-Xmx2048m']
-}
-
-
-
-
-__________
-
-
-rootProject.name = 'HelloWorldPlugin'
