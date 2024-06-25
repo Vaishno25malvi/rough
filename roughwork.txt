@@ -1,3 +1,187 @@
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellij.notification.Notification;
+import com.intellij.notification.NotificationType;
+import com.intellij.notification.Notifications;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.Messages;
+import javafx.application.Platform;
+import javafx.embed.swing.JFXPanel;
+import javafx.scene.Scene;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.util.EntityUtils;
+
+import javax.swing.*;
+import java.awt.*;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+public class PluginMain {
+
+    private static final String API_URL = "https://your-api-url/token";
+    private static final String API_KEY = "your-api-key";
+    private static final String USER_ID = "user-id";
+    private static final String PROJECT_ID = "project-id";
+
+    private static String token;
+    private static Map<String, String> urlMap;
+
+    public static void main(String[] args) {
+        // Initialize the plugin and start
+        SwingUtilities.invokeLater(() -> {
+            try {
+                PluginMain plugin = new PluginMain();
+                plugin.startPlugin();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    public void startPlugin() {
+        // Fetch token
+        token = fetchToken(API_URL, API_KEY);
+
+        if (token != null) {
+            // Fetch URL map
+            urlMap = getUrlMap(API_KEY, USER_ID, PROJECT_ID);
+
+            // Display initial WebView content
+            String initialContent = getInitialWebviewContent(urlMap);
+            showWebView(initialContent);
+        } else {
+            // Handle token fetch error
+            showError("Failed to fetch token from API.");
+        }
+    }
+
+    private String fetchToken(String apiURL, String apiKey) {
+        HttpClient client = HttpClients.createDefault();
+        HttpGet request = new HttpGet(apiURL);
+        request.addHeader("x-api-key", apiKey);
+
+        try {
+            HttpResponse response = client.execute(request);
+            String responseBody = EntityUtils.toString(response.getEntity());
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode jsonNode = mapper.readTree(responseBody);
+            return jsonNode.get("token").asText(); // Assuming JSON response {"token": "your_token"}
+        } catch (IOException e) {
+            Notifications.Bus.notify(new Notification("Token Fetch", "Failed to fetch token", e.getMessage(), NotificationType.ERROR));
+            return null;
+        }
+    }
+
+    private Map<String, String> getUrlMap(String apiKey, String userId, String proj) {
+        String apiUrl = "https://wellsfargo-prod.harness.io/pipeline/api/p";
+
+        HttpClient client = HttpClients.createDefault();
+        HttpGet request = new HttpGet(apiUrl);
+        request.addHeader("x-api-key", apiKey);
+
+        try {
+            HttpResponse response = client.execute(request);
+            String responseBody = EntityUtils.toString(response.getEntity());
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode responseData = mapper.readTree(responseBody);
+            JsonNode nodeMap = responseData.path("data").path("executionGraph").path("nodeMap");
+            return createUrlMap(nodeMap.toString(), userId, proj);
+        } catch (IOException e) {
+            Notifications.Bus.notify(new Notification("URL Fetch", "Failed to fetch URL map", e.getMessage(), NotificationType.ERROR));
+            return new HashMap<>();
+        }
+    }
+
+    private Map<String, String> createUrlMap(String jsonString, String userId, String proj) {
+        Map<String, String> urlMap = new HashMap<>();
+        String regex = "logKeys\":\\[\"accountId:" + userId + "/orgId:wf/projectId:" + proj + "/pipelineId:([^\"]+)\"";
+        Pattern pattern = Pattern.compile(regex);
+        Matcher matcher = pattern.matcher(jsonString);
+
+        while (matcher.find()) {
+            String key = matcher.group(1);
+            String value = matcher.group(0); // Adjust as per your requirement
+            urlMap.put(key, value);
+        }
+
+        return urlMap;
+    }
+
+    private String getInitialWebviewContent(Map<String, String> urlMap) {
+        StringBuilder optionsBuilder = new StringBuilder();
+        urlMap.forEach((key, value) -> optionsBuilder.append("<option value=\"").append(key).append("\">").append(key).append("</option>"));
+
+        return "<!DOCTYPE html>\n" +
+                "<html lang=\"en\">\n" +
+                "<head>\n" +
+                "    <meta charset=\"UTF-8\">\n" +
+                "    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n" +
+                "    <title>Select option to display logs</title>\n" +
+                "</head>\n" +
+                "<body>\n" +
+                "<h1>Select option to display logs</h1>\n" +
+                "<select id=\"log-select\">\n" +
+                optionsBuilder.toString() +
+                "</select>\n" +
+                "<button onclick=\"fetchData()\">Submit</button>\n" +
+                "<script>\n" +
+                "    function fetchData() {\n" +
+                "        const topic = document.getElementById('log-select').value;\n" +
+                "        // Logic to handle fetching data based on topic\n" +
+                "    }\n" +
+                "</script>\n" +
+                "</body>\n" +
+                "</html>";
+    }
+
+    private void showWebView(String htmlContent) {
+        JFrame frame = new JFrame("Select Log");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(800, 600);
+
+        JFXPanel fxPanel = new JFXPanel();
+        frame.add(fxPanel);
+
+        Platform.runLater(() -> {
+            WebView webView = new WebView();
+            WebEngine engine = webView.getEngine();
+            engine.loadContent(htmlContent);
+
+            Scene scene = new Scene(webView);
+            fxPanel.setScene(scene);
+        });
+
+        frame.setVisible(true);
+    }
+
+    private void showError(String message) {
+        JOptionPane.showMessageDialog(null, message, "Error", JOptionPane.ERROR_MESSAGE);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
 package com.example;
 
 import com.fasterxml.jackson.databind.JsonNode;
