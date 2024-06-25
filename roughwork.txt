@@ -1,5 +1,152 @@
 package com.example;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowFactory;
+import com.intellij.ui.jcef.JBCefBrowser;
+import com.intellij.ui.content.Content;
+import com.intellij.ui.content.ContentFactory;
+import org.jetbrains.annotations.NotNull;
+
+import javax.swing.*;
+import javax.swing.event.TreeSelectionEvent;
+import javax.swing.event.TreeSelectionListener;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeSelectionModel;
+import java.awt.*;
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.HashMap;
+import java.util.Map;
+
+public class HelloWorldToolWindowFactory implements ToolWindowFactory {
+
+    @Override
+    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+        JSplitPane splitPane = new JSplitPane();
+
+        DefaultMutableTreeNode root = createTreeNodes();
+        JTree tree = new JTree(root);
+        tree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
+
+        JBCefBrowser browser = new JBCefBrowser();
+        JPanel contentPanel = new JPanel(new BorderLayout());
+        contentPanel.add(browser.getComponent(), BorderLayout.CENTER);
+
+        Map<String, String> nodeUrlMap = createNodeUrlMap();
+
+        tree.addTreeSelectionListener(new TreeSelectionListener() {
+            @Override
+            public void valueChanged(TreeSelectionEvent e) {
+                DefaultMutableTreeNode selectedNode = (DefaultMutableTreeNode) tree.getLastSelectedPathComponent();
+                if (selectedNode != null) {
+                    String nodeName = selectedNode.getUserObject().toString();
+                    String url = nodeUrlMap.get(nodeName);
+                    if (url != null) {
+                        fetchAndDisplayData(url, browser);
+                    } else {
+                        browser.loadHTML("<html><body><p>No data available for " + nodeName + "</p></body></html>");
+                    }
+                }
+            }
+        });
+
+        splitPane.setLeftComponent(new JScrollPane(tree));
+        splitPane.setRightComponent(contentPanel);
+        splitPane.setDividerLocation(200);
+
+        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+        Content content = contentFactory.createContent(splitPane, "", false);
+        toolWindow.getContentManager().addContent(content);
+    }
+
+    private DefaultMutableTreeNode createTreeNodes() {
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("Root");
+        DefaultMutableTreeNode node1 = new DefaultMutableTreeNode("Node 1");
+        DefaultMutableTreeNode node2 = new DefaultMutableTreeNode("Node 2");
+        DefaultMutableTreeNode node3 = new DefaultMutableTreeNode("Node 3");
+
+        root.add(node1);
+        root.add(node2);
+        root.add(node3);
+
+        DefaultMutableTreeNode node1Child1 = new DefaultMutableTreeNode("Node 1.1");
+        DefaultMutableTreeNode node1Child2 = new DefaultMutableTreeNode("Node 1.2");
+
+        node1.add(node1Child1);
+        node1.add(node1Child2);
+
+        return root;
+    }
+
+    private Map<String, String> createNodeUrlMap() {
+        Map<String, String> map = new HashMap<>();
+        map.put("Node 1", "https://jsonplaceholder.typicode.com/posts");
+        map.put("Node 1.1", "https://jsonplaceholder.typicode.com/comments");
+        map.put("Node 1.2", "https://jsonplaceholder.typicode.com/users");
+        map.put("Node 2", "https://jsonplaceholder.typicode.com/todos");
+        map.put("Node 3", "https://jsonplaceholder.typicode.com/albums");
+        return map;
+    }
+
+    private void fetchAndDisplayData(String url, JBCefBrowser browser) {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(url))
+                .build();
+
+        client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenApply(this::parseJsonToHtmlTable)
+                .thenAccept(html -> browser.loadHTML(html))
+                .exceptionally(e -> {
+                    browser.loadHTML("<html><body><p>Error fetching data: " + e.getMessage() + "</p></body></html>");
+                    return null;
+                });
+    }
+
+    private String parseJsonToHtmlTable(String json) {
+        StringBuilder html = new StringBuilder("<html><body><table border='1'>");
+
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(json);
+
+            if (rootNode.isArray() && rootNode.size() > 0) {
+                JsonNode firstObject = rootNode.get(0);
+                html.append("<tr>");
+                firstObject.fieldNames().forEachRemaining(field -> html.append("<th>").append(field).append("</th>"));
+                html.append("</tr>");
+
+                for (JsonNode node : rootNode) {
+                    html.append("<tr>");
+                    node.fieldNames().forEachRemaining(field -> html.append("<td>").append(node.get(field).asText()).append("</td>"));
+                    html.append("</tr>");
+                }
+            }
+        } catch (IOException e) {
+            return "<html><body><p>Error parsing JSON: " + e.getMessage() + "</p></body></html>";
+        }
+
+        html.append("</table></body></html>");
+        return html.toString();
+    }
+}
+
+
+------
+
+
+
+
+package com.example;
+
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
