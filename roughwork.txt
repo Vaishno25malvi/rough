@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
-import javafx.application.Platform;
-import javafx.embed.swing.JFXPanel;
-import javafx.scene.Scene;
-import javafx.scene.web.WebEngine;
-import javafx.scene.web.WebView;
+import com.teamdev.jxbrowser.browser.Browser;
+import com.teamdev.jxbrowser.browser.callback.InjectJsCallback;
+import com.teamdev.jxbrowser.engine.Engine;
+import com.teamdev.jxbrowser.engine.EngineOptions;
+import com.teamdev.jxbrowser.view.swing.BrowserView;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
@@ -28,31 +28,28 @@ public class ShowWebViewAction extends AnAction {
             return;
         }
 
-        JFXPanel jfxPanel = new JFXPanel();
         JFrame frame = new JFrame("API Data");
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        frame.add(jfxPanel);
         frame.setSize(800, 600);
+
+        // Initialize JxBrowser engine
+        Engine engine = Engine.newInstance(EngineOptions.newBuilder().licenseKey("YOUR_LICENSE_KEY").build());
+        Browser browser = engine.newBrowser();
+
+        BrowserView view = BrowserView.newInstance(browser);
+
+        frame.add(view, BorderLayout.CENTER);
         frame.setVisible(true);
-
-        Platform.runLater(() -> initFX(jfxPanel));
-    }
-
-    private void initFX(JFXPanel jfxPanel) {
-        WebView webView = new WebView();
-        WebEngine webEngine = webView.getEngine();
 
         new Thread(() -> {
             try {
                 String apiResponse = fetchApiResponse();
-                Platform.runLater(() -> webEngine.loadContent("<html><body><h1>Hello</h1><pre>" + apiResponse + "</pre></body></html>"));
+                String htmlContent = "<html><body><h1>Hello</h1><pre>" + apiResponse + "</pre></body></html>";
+                SwingUtilities.invokeLater(() -> browser.mainFrame().ifPresent(frame -> frame.loadHtml(htmlContent)));
             } catch (IOException ex) {
                 ex.printStackTrace();
             }
         }).start();
-
-        Scene scene = new Scene(webView);
-        jfxPanel.setScene(scene);
     }
 
     private String fetchApiResponse() throws IOException {
