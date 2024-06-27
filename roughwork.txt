@@ -1,3 +1,49 @@
+plugins {
+    id("org.jetbrains.intellij") version "1.1.4"
+    id("java")
+}
+
+group = "com.example"
+version = "1.0.0"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.12.4")
+    implementation("org.jetbrains:markdown:0.2.4")
+}
+
+intellij {
+    version.set("2021.1.3")
+    type.set("IC") // Target IDE Platform
+}
+
+tasks {
+    patchPluginXml {
+        changeNotes.set("""
+            Initial version of the plugin.
+        """.trimIndent())
+    }
+}
+-------
+
+<idea-plugin>
+    <id>com.example.plugin</id>
+    <name>API WebView Plugin</name>
+    <version>1.0.0</version>
+    <vendor email="your-email@example.com" url="http://example.com">Your Name</vendor>
+
+    <description>
+        Plugin to show API data in a WebView.
+    </description>
+
+    <toolWindow id="APIWebViewToolWindow" anchor="bottom" factoryClass="com.example.HelloWorldToolWindowFactory" />
+</idea-plugin>
+
+-------
+
 package com.example;
 
 import com.fasterxml.jackson.databind.JsonNode;
