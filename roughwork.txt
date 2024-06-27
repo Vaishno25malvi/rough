@@ -1,68 +1,66 @@
-package com.example.plugin;
+package com.example;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.project.Project;
-import com.teamdev.jxbrowser.browser.Browser;
-import com.teamdev.jxbrowser.browser.callback.InjectJsCallback;
-import com.teamdev.jxbrowser.engine.Engine;
-import com.teamdev.jxbrowser.engine.EngineOptions;
-import com.teamdev.jxbrowser.view.swing.BrowserView;
+import com.intellij.openapi.wm.ToolWindow;
+import com.intellij.openapi.wm.ToolWindowFactory;
+import com.intellij.ui.jcef.JBCefBrowser;
+import com.intellij.ui.content.Content;
+import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeModel;
+import javax.swing.tree.TreeSelectionModel;
+import java.awt.*;
 import java.io.IOException;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.Scanner;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
 
-public class ShowWebViewAction extends AnAction {
+public class HelloWorldToolWindowFactory implements ToolWindowFactory {
     private static final String API_URL = "https://api.example.com/data"; // Replace with your API URL
 
     @Override
-    public void actionPerformed(@NotNull AnActionEvent e) {
-        Project project = e.getProject();
-        if (project == null) {
-            return;
-        }
+    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+        JComponent toolWindowContent = createToolWindowPanel();
+        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
+        Content content = contentFactory.createContent(toolWindowContent, "", false);
+        toolWindow.getContentManager().addContent(content);
+    }
 
-        JFrame frame = new JFrame("API Data");
-        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        frame.setSize(800, 600);
-
-        // Initialize JxBrowser engine
-        Engine engine = Engine.newInstance(EngineOptions.newBuilder().licenseKey("YOUR_LICENSE_KEY").build());
-        Browser browser = engine.newBrowser();
-
-        BrowserView view = BrowserView.newInstance(browser);
-
-        frame.add(view, BorderLayout.CENTER);
-        frame.setVisible(true);
+    private JComponent createToolWindowPanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        JBCefBrowser browser = new JBCefBrowser();
+        panel.add(browser.getComponent(), BorderLayout.CENTER);
 
         new Thread(() -> {
             try {
                 String apiResponse = fetchApiResponse();
                 String htmlContent = "<html><body><h1>Hello</h1><pre>" + apiResponse + "</pre></body></html>";
-                SwingUtilities.invokeLater(() -> browser.mainFrame().ifPresent(frame -> frame.loadHtml(htmlContent)));
-            } catch (IOException ex) {
+                SwingUtilities.invokeLater(() -> browser.loadHTML(htmlContent));
+            } catch (IOException | InterruptedException ex) {
                 ex.printStackTrace();
             }
         }).start();
+
+        return panel;
     }
 
-    private String fetchApiResponse() throws IOException {
-        URL url = new URL(API_URL);
-        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-        conn.setRequestMethod("GET");
+    private String fetchApiResponse() throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(API_URL))
+                .build();
 
-        Scanner scanner = new Scanner(conn.getInputStream());
-        String response = scanner.useDelimiter("\\A").next();
-        scanner.close();
+        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
 
         ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode jsonNode = objectMapper.readTree(response);
+        JsonNode jsonNode = objectMapper.readTree(response.body());
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
     }
 }
