@@ -11,19 +11,16 @@ import com.intellij.ui.content.ContentFactory;
 import org.jetbrains.annotations.NotNull;
 
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeModel;
-import javax.swing.tree.TreeSelectionModel;
 import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.concurrent.CompletableFuture;
 
 public class HelloWorldToolWindowFactory implements ToolWindowFactory {
     private static final String API_URL = "https://api.example.com/data"; // Replace with your API URL
+    private static final String API_KEY = "your_api_key_here"; // Replace with your API key
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
@@ -55,6 +52,8 @@ public class HelloWorldToolWindowFactory implements ToolWindowFactory {
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(API_URL))
+                .header("x-api-key", API_KEY)
+                .GET()
                 .build();
 
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
@@ -64,7 +63,6 @@ public class HelloWorldToolWindowFactory implements ToolWindowFactory {
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
     }
 }
-
 
 
 -----------------<___<<<<<<<________
