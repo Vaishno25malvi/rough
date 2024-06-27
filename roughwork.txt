@@ -1,3 +1,78 @@
+package com.example.plugin;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.project.Project;
+import javafx.application.Platform;
+import javafx.embed.swing.JFXPanel;
+import javafx.scene.Scene;
+import javafx.scene.web.WebEngine;
+import javafx.scene.web.WebView;
+import org.jetbrains.annotations.NotNull;
+
+import javax.swing.*;
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Scanner;
+
+public class ShowWebViewAction extends AnAction {
+    private static final String API_URL = "https://api.example.com/data"; // Replace with your API URL
+
+    @Override
+    public void actionPerformed(@NotNull AnActionEvent e) {
+        Project project = e.getProject();
+        if (project == null) {
+            return;
+        }
+
+        JFXPanel jfxPanel = new JFXPanel();
+        JFrame frame = new JFrame("API Data");
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        frame.add(jfxPanel);
+        frame.setSize(800, 600);
+        frame.setVisible(true);
+
+        Platform.runLater(() -> initFX(jfxPanel));
+    }
+
+    private void initFX(JFXPanel jfxPanel) {
+        WebView webView = new WebView();
+        WebEngine webEngine = webView.getEngine();
+
+        new Thread(() -> {
+            try {
+                String apiResponse = fetchApiResponse();
+                Platform.runLater(() -> webEngine.loadContent("<html><body><h1>Hello</h1><pre>" + apiResponse + "</pre></body></html>"));
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }).start();
+
+        Scene scene = new Scene(webView);
+        jfxPanel.setScene(scene);
+    }
+
+    private String fetchApiResponse() throws IOException {
+        URL url = new URL(API_URL);
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod("GET");
+
+        Scanner scanner = new Scanner(conn.getInputStream());
+        String response = scanner.useDelimiter("\\A").next();
+        scanner.close();
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        JsonNode jsonNode = objectMapper.readTree(response);
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
+    }
+}
+
+
+
+-----------------<___<<<<<<<________
 package com.example;
 
 import com.fasterxml.jackson.databind.JsonNode;
