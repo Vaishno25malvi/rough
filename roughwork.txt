@@ -1,327 +1,72 @@
-dependencies {
-    implementation 'org.apache.xmlgraphics:batik-transcoder:1.14'
-    implementation 'org.apache.xmlgraphics:batik-codec:1.14'
-}
+import org.fusesource.jansi.Ansi;
+import org.fusesource.jansi.AnsiRenderer;
 
-----
-
-import org.apache.batik.transcoder.TranscoderException;
-import org.apache.batik.transcoder.image.PNGTranscoder;
-import org.apache.batik.transcoder.TranscoderInput;
-import org.apache.batik.transcoder.TranscoderOutput;
-
-import javax.imageio.ImageIO;
-import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
-import javax.swing.tree.DefaultTreeCellRenderer;
-import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-
-public class CustomTreeCellRenderer extends DefaultTreeCellRenderer {
-
-    private Icon nodeIcon;
-    private Icon leafIcon;
-
-    public CustomTreeCellRenderer() {
-        try {
-            // Load and resize the SVG icons
-            nodeIcon = loadSvgIcon("/icons/nodeIcon.svg", 16, 16);
-            leafIcon = loadSvgIcon("/icons/leafIcon.svg", 16, 16);
-        } catch (IOException | TranscoderException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private Icon loadSvgIcon(String path, int width, int height) throws IOException, TranscoderException {
-        InputStream inputStream = getClass().getResourceAsStream(path);
-        if (inputStream == null) {
-            throw new IOException("Resource not found: " + path);
-        }
-
-        TranscoderInput transcoderInput = new TranscoderInput(inputStream);
-        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        TranscoderOutput transcoderOutput = new TranscoderOutput(outputStream);
-
-        PNGTranscoder transcoder = new PNGTranscoder();
-        transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) width);
-        transcoder.addTranscodingHint(PNGTranscoder.KEY_HEIGHT, (float) height);
-
-        transcoder.transcode(transcoderInput, transcoderOutput);
-
-        byte[] imageBytes = outputStream.toByteArray();
-        BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
-        return new ImageIcon(bufferedImage);
-    }
-
-    @Override
-    public Component getTreeCellRendererComponent(JTree tree, Object value,
-                                                  boolean selected, boolean expanded,
-                                                  boolean leaf, int row, boolean hasFocus) {
-        super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
-
-        if (leaf) {
-            setIcon(leafIcon);
-        } else {
-            setIcon(nodeIcon);
-        }
-
-        return this;
+public class AnsiToHtmlParser {
+    public static String parseAnsiToHtml(String text) {
+        return AnsiRenderer.render(text);
     }
 }
-
-
----
+-----------
 
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 
-public class MyTreeComponent {
+public class HtmlTreeExample {
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            JTree tree = new JTree(createNodes());
+            tree.setCellRenderer(new HtmlTreeCellRenderer());
 
-    public JComponent createComponent() {
-        // Create the root node
+            JFrame frame = new JFrame("HTML JTree Example");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.add(new JScrollPane(tree));
+            frame.setSize(400, 300);
+            frame.setVisible(true);
+        });
+    }
+
+    private static DefaultMutableTreeNode createNodes() {
         DefaultMutableTreeNode root = new DefaultMutableTreeNode("Root");
 
-        // Create child nodes
-        DefaultMutableTreeNode node1 = new DefaultMutableTreeNode("Node 1");
-        DefaultMutableTreeNode node2 = new DefaultMutableTreeNode("Node 2");
+        // Example HTML content with ANSI codes parsed
+        String htmlContent1 = "This is <b>bold</b> text";
+        String htmlContent2 = "This is <i>italic</i> text";
 
-        // Add child nodes to root
-        root.add(node1);
-        root.add(node2);
+        root.add(new DefaultMutableTreeNode(htmlContent1));
+        root.add(new DefaultMutableTreeNode(htmlContent2));
 
-        // Create the tree using the root node
-        JTree tree = new JTree(root);
-
-        // Set the custom renderer
-        tree.setCellRenderer(new CustomTreeCellRenderer());
-
-        // Create a scroll pane and add the tree to it
-        JScrollPane scrollPane = new JScrollPane(tree);
-
-        return scrollPane;
+        return root;
     }
 }
 
-----
-import com.intellij.util.SVGLoader;
+---------
 
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.tree.DefaultTreeCellRenderer;
 import java.awt.*;
-import java.io.IOException;
 
-public class CustomTreeCellRenderer extends DefaultTreeCellRenderer {
-
-    private Icon nodeIcon;
-    private Icon leafIcon;
-
-    public CustomTreeCellRenderer() {
-        try {
-            // Load and resize the SVG icons
-            nodeIcon = loadSvgIcon("/path/to/nodeIcon.svg", 16, 16);
-            leafIcon = loadSvgIcon("/path/to/leafIcon.svg", 16, 16);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private Icon loadSvgIcon(String path, int width, int height) throws IOException {
-        return SVGLoader.load(null, getClass().getResource(path), new Dimension(width, height));
-    }
-
+public class HtmlTreeCellRenderer extends DefaultTreeCellRenderer {
     @Override
     public Component getTreeCellRendererComponent(JTree tree, Object value,
                                                   boolean selected, boolean expanded,
                                                   boolean leaf, int row, boolean hasFocus) {
-        super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
+        Component c = super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
 
-        if (leaf) {
-            setIcon(leafIcon);
-        } else {
-            setIcon(nodeIcon);
+        if (c instanceof JLabel) {
+            JLabel label = (JLabel) c;
+            // Assume value.toString() returns the HTML content with parsed ANSI codes
+            label.setText("<html>" + value.toString() + "</html>");
         }
 
-        return this;
+        return c;
     }
-}
-
----
-plugins {
-    id 'java'
-    id 'org.jetbrains.intellij' version '1.1.4'
-}
-
-group 'com.example'
-version '1.0.0'
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation "org.jetbrains:annotations:20.1.0"
-}
-
-intellij {
-    version '2021.2'
-    plugins = ['com.intellij.java']
-}
-
-sourceCompatibility = '1.8'
-targetCompatibility = '1.8'
-
-patchPluginXml {
-    changeNotes """
-      Initial version of HelloWorldPlugin.
-    """
-}
-
-runIde {
-    jvmArgs = ['-Xmx2048m']
 }
 
 ----
-<idea-plugin>
-    <id>com.example.helloworldplugin</id>
-    <name>HelloWorldPlugin</name>
-    <version>1.0.0</version>
-    <vendor email="your-email@example.com" url="https://your-url.com">Your Name</vendor>
 
-    <description><![CDATA[
-        A simple plugin that shows a "Hello, World!" message in a WebView.
-    ]]></description>
 
-    <depends>com.intellij.modules.platform</depends>
-
-    <extensions defaultExtensionNs="com.intellij">
-        <toolWindow id="HelloWorld" anchor="right" factoryClass="com.example.HelloWorldToolWindowFactory" />
-    </extensions>
-
-    <actions>
-        <action id="com.example.HelloWorldAction" class="com.example.HelloWorldAction" text="Show Hello World" description="Shows Hello World in a WebView">
-            <add-to-group group-id="ToolsMenu" anchor="last" />
-        </action>
-    </actions>
-</idea-plugin>
-
-------------
-package com.example;
-
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowFactory;
-import com.intellij.ui.jcef.JBCefBrowser;
-import com.intellij.ui.content.Content;
-import com.intellij.ui.content.ContentFactory;
-import org.jetbrains.annotations.NotNull;
-
-import javax.swing.*;
-import java.awt.*;
-
-public class HelloWorldToolWindowFactory implements ToolWindowFactory {
-    @Override
-    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        // Create a simple panel with a WebView
-        JPanel panel = new JPanel(new BorderLayout());
-        JButton button = new JButton("Click me");
-        JLabel label = new JLabel("<html><div style='font-size:24px;color:blue;'>Hello, <b style='color:red;'>World</b>!</div></html>", SwingConstants.CENTER);
-
-        button.addActionListener(e -> label.setText("<html><div style='font-size:24px;color:blue;'>Hello, <b style='color:red;'>World</b>!</div></html>"));
-
-        panel.add(button, BorderLayout.NORTH);
-        panel.add(label, BorderLayout.CENTER);
-
-        // Add the panel to the tool window
-        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
-        Content content = contentFactory.createContent(panel, "", false);
-        toolWindow.getContentManager().addContent(content);
-    }
-}
-----
-package com.example;
-
-import com.intellij.openapi.actionSystem.AnAction;
-import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowManager;
-import org.jetbrains.annotations.NotNull;
-
-public class HelloWorldAction extends AnAction {
-    @Override
-    public void actionPerformed(@NotNull AnActionEvent e) {
-        ToolWindow toolWindow = ToolWindowManager.getInstance(e.getProject()).getToolWindow("HelloWorld");
-        if (toolWindow != null) {
-            toolWindow.show();
-        }
-    }
-}
----
-package com.example;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.ToolWindow;
-import com.intellij.openapi.wm.ToolWindowFactory;
-import com.intellij.ui.jcef.JBCefBrowser;
-import com.intellij.ui.content.Content;
-import com.intellij.ui.content.ContentFactory;
-import org.jetbrains.annotations.NotNull;
-
-import javax.swing.*;
-import java.awt.*;
-import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-
-public class HelloWorldToolWindowFactory implements ToolWindowFactory {
-    private static final String API_URL = "https://api.example.com/data"; // Replace with your API URL
-    private static final String API_KEY = "your_api_key_here"; // Replace with your API key
-
-    @Override
-    public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
-        JComponent toolWindowContent = createToolWindowPanel();
-        ContentFactory contentFactory = ContentFactory.SERVICE.getInstance();
-        Content content = contentFactory.createContent(toolWindowContent, "", false);
-        toolWindow.getContentManager().addContent(content);
-    }
-
-    private JComponent createToolWindowPanel() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JBCefBrowser browser = new JBCefBrowser();
-        panel.add(browser.getComponent(), BorderLayout.CENTER);
-
-        new Thread(() -> {
-            try {
-                String apiResponse = fetchApiResponse();
-                String htmlContent = "<html><body><h1>Hello</h1><pre>" + apiResponse + "</pre></body></html>";
-                SwingUtilities.invokeLater(() -> browser.loadHTML(htmlContent));
-            } catch (IOException | InterruptedException ex) {
-                ex.printStackTrace();
-            }
-        }).start();
-
-        return panel;
-    }
-
-    private String fetchApiResponse() throws IOException, InterruptedException {
-        HttpClient client = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(API_URL))
-                .header("x-api-key", API_KEY)
-                .GET()
-                .build();
-
-        HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        JsonNode jsonNode = objectMapper.readTree(response.body());
-        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode);
-    }
-}
+<dependency>
+    <groupId>org.fusesource.jansi</groupId>
+    <artifactId>jansi</artifactId>
+    <version>2.4.0</version>
+</dependency>
