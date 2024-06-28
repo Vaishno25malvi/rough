@@ -1,3 +1,78 @@
+import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+
+public class MyTreeComponent {
+
+    public JComponent createComponent() {
+        // Create the root node
+        DefaultMutableTreeNode root = new DefaultMutableTreeNode("Root");
+
+        // Create child nodes
+        DefaultMutableTreeNode node1 = new DefaultMutableTreeNode("Node 1");
+        DefaultMutableTreeNode node2 = new DefaultMutableTreeNode("Node 2");
+
+        // Add child nodes to root
+        root.add(node1);
+        root.add(node2);
+
+        // Create the tree using the root node
+        JTree tree = new JTree(root);
+
+        // Set the custom renderer
+        tree.setCellRenderer(new CustomTreeCellRenderer());
+
+        // Create a scroll pane and add the tree to it
+        JScrollPane scrollPane = new JScrollPane(tree);
+
+        return scrollPane;
+    }
+}
+
+----
+import com.intellij.util.SVGLoader;
+
+import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import java.awt.*;
+import java.io.IOException;
+
+public class CustomTreeCellRenderer extends DefaultTreeCellRenderer {
+
+    private Icon nodeIcon;
+    private Icon leafIcon;
+
+    public CustomTreeCellRenderer() {
+        try {
+            // Load and resize the SVG icons
+            nodeIcon = loadSvgIcon("/path/to/nodeIcon.svg", 16, 16);
+            leafIcon = loadSvgIcon("/path/to/leafIcon.svg", 16, 16);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private Icon loadSvgIcon(String path, int width, int height) throws IOException {
+        return SVGLoader.load(null, getClass().getResource(path), new Dimension(width, height));
+    }
+
+    @Override
+    public Component getTreeCellRendererComponent(JTree tree, Object value,
+                                                  boolean selected, boolean expanded,
+                                                  boolean leaf, int row, boolean hasFocus) {
+        super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
+
+        if (leaf) {
+            setIcon(leafIcon);
+        } else {
+            setIcon(nodeIcon);
+        }
+
+        return this;
+    }
+}
+
+---
 plugins {
     id 'java'
     id 'org.jetbrains.intellij' version '1.1.4'
