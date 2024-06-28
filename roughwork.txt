@@ -1,4 +1,14 @@
+public class StringProcessor {
 
+    public static String parseAnsiToHtml(String ansiString) {
+        // Convert ANSI to HTML using Jansi
+        String htmlString = AnsiRenderer.render(ansiString);
+        return "<html>" + htmlString + "</html>";
+    }
+}
+
+
+------
 import org.fusesource.jansi.AnsiRenderer;
 import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
