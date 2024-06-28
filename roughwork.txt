@@ -1,72 +1,75 @@
 import org.fusesource.jansi.Ansi;
 import org.fusesource.jansi.AnsiRenderer;
 
-public class AnsiToHtmlParser {
-    public static String parseAnsiToHtml(String text) {
-        return AnsiRenderer.render(text);
+import javax.swing.*;
+import javax.swing.table.DefaultTableCellRenderer;
+import java.awt.*;
+
+public class HtmlAnsiTableCellRenderer extends DefaultTableCellRenderer {
+
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value,
+                                                   boolean isSelected, boolean hasFocus, int row, int column) {
+        if (value instanceof String) {
+            String html = (String) value;
+            html = parseAnsiToHtml(html); // Convert ANSI to HTML
+            JLabel label = new JLabel(html);
+            label.setOpaque(true);
+            label.setFont(table.getFont());
+            if (isSelected) {
+                label.setBackground(table.getSelectionBackground());
+                label.setForeground(table.getSelectionForeground());
+            } else {
+                label.setBackground(table.getBackground());
+                label.setForeground(table.getForeground());
+            }
+            return label;
+        }
+        return super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+    }
+
+    private String parseAnsiToHtml(String ansiString) {
+        // Use Jansi to convert ANSI to HTML
+        String htmlString = AnsiRenderer.render(ansiString);
+        return "<html>" + htmlString + "</html>";
     }
 }
------------
+
+
+-------
+
+
+
+
+
+
 
 import javax.swing.*;
-import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.table.DefaultTableModel;
 
-public class HtmlTreeExample {
+public class JTableExample {
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
-            JTree tree = new JTree(createNodes());
-            tree.setCellRenderer(new HtmlTreeCellRenderer());
-
-            JFrame frame = new JFrame("HTML JTree Example");
+            JFrame frame = new JFrame("JTable HTML with ANSI Codes");
             frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-            frame.add(new JScrollPane(tree));
-            frame.setSize(400, 300);
+
+            String[] columnNames = {"HTML Data"};
+            Object[][] data = {
+                    {"\u001B[31mRed Text\u001B[0m and <b>bold</b> HTML"},
+                    {"\u001B[32mGreen Text\u001B[0m and <i>italic</i> HTML"}
+            };
+
+            DefaultTableModel model = new DefaultTableModel(data, columnNames);
+            JTable table = new JTable(model);
+            table.setDefaultRenderer(Object.class, new HtmlAnsiTableCellRenderer());
+
+            JScrollPane scrollPane = new JScrollPane(table);
+            frame.add(scrollPane);
+
+            frame.pack();
+            frame.setLocationRelativeTo(null);
             frame.setVisible(true);
         });
     }
-
-    private static DefaultMutableTreeNode createNodes() {
-        DefaultMutableTreeNode root = new DefaultMutableTreeNode("Root");
-
-        // Example HTML content with ANSI codes parsed
-        String htmlContent1 = "This is <b>bold</b> text";
-        String htmlContent2 = "This is <i>italic</i> text";
-
-        root.add(new DefaultMutableTreeNode(htmlContent1));
-        root.add(new DefaultMutableTreeNode(htmlContent2));
-
-        return root;
-    }
 }
-
----------
-
-import javax.swing.*;
-import javax.swing.tree.DefaultTreeCellRenderer;
-import java.awt.*;
-
-public class HtmlTreeCellRenderer extends DefaultTreeCellRenderer {
-    @Override
-    public Component getTreeCellRendererComponent(JTree tree, Object value,
-                                                  boolean selected, boolean expanded,
-                                                  boolean leaf, int row, boolean hasFocus) {
-        Component c = super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
-
-        if (c instanceof JLabel) {
-            JLabel label = (JLabel) c;
-            // Assume value.toString() returns the HTML content with parsed ANSI codes
-            label.setText("<html>" + value.toString() + "</html>");
-        }
-
-        return c;
-    }
-}
-
-----
-
-
-<dependency>
-    <groupId>org.fusesource.jansi</groupId>
-    <artifactId>jansi</artifactId>
-    <version>2.4.0</version>
-</dependency>
