@@ -1,3 +1,73 @@
+import org.apache.batik.transcoder.TranscoderException;
+import org.apache.batik.transcoder.image.PNGTranscoder;
+import org.apache.batik.transcoder.TranscoderInput;
+import org.apache.batik.transcoder.TranscoderOutput;
+
+import javax.imageio.ImageIO;
+import javax.swing.*;
+import javax.swing.tree.DefaultMutableTreeNode;
+import javax.swing.tree.DefaultTreeCellRenderer;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+
+public class CustomTreeCellRenderer extends DefaultTreeCellRenderer {
+
+    private Icon nodeIcon;
+    private Icon leafIcon;
+
+    public CustomTreeCellRenderer() {
+        try {
+            // Load and resize the SVG icons
+            nodeIcon = loadSvgIcon("/icons/nodeIcon.svg", 16, 16);
+            leafIcon = loadSvgIcon("/icons/leafIcon.svg", 16, 16);
+        } catch (IOException | TranscoderException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private Icon loadSvgIcon(String path, int width, int height) throws IOException, TranscoderException {
+        InputStream inputStream = getClass().getResourceAsStream(path);
+        if (inputStream == null) {
+            throw new IOException("Resource not found: " + path);
+        }
+
+        TranscoderInput transcoderInput = new TranscoderInput(inputStream);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        TranscoderOutput transcoderOutput = new TranscoderOutput(outputStream);
+
+        PNGTranscoder transcoder = new PNGTranscoder();
+        transcoder.addTranscodingHint(PNGTranscoder.KEY_WIDTH, (float) width);
+        transcoder.addTranscodingHint(PNGTranscoder.KEY_HEIGHT, (float) height);
+
+        transcoder.transcode(transcoderInput, transcoderOutput);
+
+        byte[] imageBytes = outputStream.toByteArray();
+        BufferedImage bufferedImage = ImageIO.read(new ByteArrayInputStream(imageBytes));
+        return new ImageIcon(bufferedImage);
+    }
+
+    @Override
+    public Component getTreeCellRendererComponent(JTree tree, Object value,
+                                                  boolean selected, boolean expanded,
+                                                  boolean leaf, int row, boolean hasFocus) {
+        super.getTreeCellRendererComponent(tree, value, selected, expanded, leaf, row, hasFocus);
+
+        if (leaf) {
+            setIcon(leafIcon);
+        } else {
+            setIcon(nodeIcon);
+        }
+
+        return this;
+    }
+}
+
+
+---
+
 import javax.swing.*;
 import javax.swing.tree.DefaultMutableTreeNode;
 
