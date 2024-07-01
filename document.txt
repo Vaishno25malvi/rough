@@ -1,3 +1,73 @@
+import javax.swing.*;
+import javax.swing.table.DefaultTableModel;
+import javax.swing.table.TableCellRenderer;
+import java.awt.*;
+
+public class MultiLineTableCellRenderer extends JTextArea implements TableCellRenderer {
+
+    public MultiLineTableCellRenderer() {
+        setLineWrap(true);
+        setWrapStyleWord(true);
+        setOpaque(true); // Make sure the background is painted
+    }
+
+    @Override
+    public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected,
+                                                   boolean hasFocus, int row, int column) {
+        if (isSelected) {
+            setForeground(table.getSelectionForeground());
+            setBackground(table.getSelectionBackground());
+        } else {
+            setForeground(table.getForeground());
+            setBackground(table.getBackground());
+        }
+
+        setFont(table.getFont());
+        setText(value != null ? value.toString() : "");
+
+        // Adjust the height of the row to match the preferred height of the JTextArea
+        setSize(table.getColumnModel().getColumn(column).getWidth(), getPreferredSize().height);
+        int preferredHeight = getPreferredSize().height;
+        if (table.getRowHeight(row) != preferredHeight) {
+            table.setRowHeight(row, preferredHeight);
+        }
+
+        return this;
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(() -> {
+            JFrame frame = new JFrame("JTable Multi-line Cell Example");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+
+            DefaultTableModel model = new DefaultTableModel() {
+                @Override
+                public boolean isCellEditable(int row, int column) {
+                    return false; // Make the table cells non-editable
+                }
+            };
+            JTable table = new JTable(model);
+
+            model.addColumn("Column 1");
+            model.addColumn("Column 2");
+            model.addRow(new Object[]{"Short text", "This is a very long text that should wrap into multiple lines in the cell\nand this is another line\nand another line"});
+            model.addRow(new Object[]{"Another short text", "Another long text that should also wrap into multiple lines\nwith multiple lines of text"});
+
+            // Apply the custom renderer to the desired column
+            table.getColumnModel().getColumn(1).setCellRenderer(new MultiLineTableCellRenderer());
+
+            // Add the table to the frame
+            frame.add(new JScrollPane(table));
+            frame.pack();
+            frame.setLocationRelativeTo(null);
+            frame.setVisible(true);
+        });
+    }
+}
+
+
+
+
 Project Title
 
 Problem Statement:
